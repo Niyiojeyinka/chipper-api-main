@@ -26,8 +26,11 @@ class FavoriteController extends Controller
 
     public function index(Request $request)
     {
-        $favorites = $request->user()->favorites;
-        return FavoriteResource::collection($favorites);
+        $favorites = $this->favoriteService->get($request->user());
+
+        return response()->json([
+            'data' => $favorites
+        ]);
     }
 
     public function favoritePost(CreateFavoriteRequest $request, Post $post)

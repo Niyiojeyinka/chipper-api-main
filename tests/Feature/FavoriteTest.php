@@ -123,4 +123,45 @@ class FavoriteTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_a_user_can_get_his_favorites()
+    {
+        $user = User::factory()->create();
+        $post = Post::factory()->create();
+        $anotherUser = User::factory()->create();
+
+        $this->actingAs($user)
+            ->postJson(route('favorites.post', ['post' => $post]))
+            ->assertCreated();
+
+        $this->actingAs($user)
+            ->postJson(route('favorites.user', ['user' => $anotherUser]))
+            ->assertCreated();
+
+        $response = $this->actingAs($user)
+            ->getJson(route('favorites.index'));
+
+        $response->assertOk();
+        $response->assertJson([
+            'data' => [
+                'posts' => [
+                    [
+                        'id' => $post->id,
+                        'title' => $post->title,
+                        'body' => $post->body,
+                        'user' => [
+                            'id' => $post->user->id,
+                            'name' => $post->user->name,
+                        ],
+                    ],
+                ],
+                'users' => [
+                    [
+                        'id' => $anotherUser->id,
+                        'name' => $anotherUser->name,
+                    ],
+                ],
+            ],
+        ]);
+    }
+
 }
