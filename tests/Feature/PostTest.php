@@ -6,7 +6,9 @@ use Illuminate\Support\Arr;
 use App\Models\User;
 use App\Notifications\NewPostNotification;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PostTest extends TestCase
@@ -143,5 +145,34 @@ class PostTest extends TestCase
         ]);
 
         Notification::assertSentTo($favoredUser, NewPostNotification::class);
+    }
+
+    public function test_user_can_create_post_with_image()
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $response = $this->actingAs($user)->postJson(route('posts.store'), [
+            'title' => 'Test Post',
+            'body' => 'This is a test post.',
+            'image' => UploadedFile::fake()->image('test.jpg')
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonStructure([
+                'data' => [
+                    'id', 'title', 'body', 'image_url',
+                ]
+            ]);
+
+        Storage::assertExists($response->json('image_url'));
+
+        $this->assertDatabaseHas('posts', [
+            'title' => 'Test Post',
+            'body' => 'This is a test post.',
+            'user_id' => $user->id
+        ]);
     }
 }
