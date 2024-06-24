@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use App\Http\Requests\CreateFavoriteRequest;
+use App\Http\Resources\FavoriteResource;
+use App\Models\User;
+use App\Services\FavoriteService;
 use Illuminate\Http\Response;
 
 /**
@@ -14,24 +17,51 @@ use Illuminate\Http\Response;
  */
 class FavoriteController extends Controller
 {
+    private FavoriteService $favoriteService;
+
+    public function __construct(FavoriteService $favoriteService)
+    {
+        $this->favoriteService = $favoriteService;
+    }
+
     public function index(Request $request)
     {
         $favorites = $request->user()->favorites;
         return FavoriteResource::collection($favorites);
     }
 
-    public function store(CreateFavoriteRequest $request, Post $post)
+    public function favoritePost(CreateFavoriteRequest $request, Post $post)
     {
-        $request->user()->favorites()->create(['post_id' => $post->id]);
+        $this->favoriteService->favorite($request->user(), $post);
 
         return response()->noContent(Response::HTTP_CREATED);
     }
 
-    public function destroy(Request $request, Post $post)
+    public function unfavoritePost(Request $request, Post $post)
     {
-        $favorite = $request->user()->favorites()->where('post_id', $post->id)->firstOrFail();
+        if (!$this->favoriteService->isFavorited($request->user(), $post)) {
+            return response()->noContent(Response::HTTP_NOT_FOUND);
+        }
 
-        $favorite->delete();
+        $this->favoriteService->unfavorite($request->user(), $post);
+
+        return response()->noContent();
+    }
+
+    public function favoriteUser(CreateFavoriteRequest $request, User $user)
+    {
+        $this->favoriteService->favorite($request->user(), $user);
+
+        return response()->noContent(Response::HTTP_CREATED);
+    }
+
+    public function unfavoriteUser(Request $request, User $user)
+    {
+        if (!$this->favoriteService->isFavorited($request->user(), $user)) {
+            return response()->noContent(Response::HTTP_NOT_FOUND);
+        }
+
+        $this->favoriteService->unfavorite($request->user(), $user);
 
         return response()->noContent();
     }
