@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use Illuminate\Support\Arr;
 use App\Models\User;
+use App\Notifications\NewPostNotification;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class PostTest extends TestCase
@@ -124,5 +126,22 @@ class PostTest extends TestCase
         $this->assertDatabaseMissing('posts', [
             'id' => $id,
         ]);
+    }
+
+    public function test_favored_users_receive_notification_when_post_is_created()
+    {
+        Notification::fake();
+
+        $author = User::factory()->create();
+        $favoredUser = User::factory()->create();
+        $favoriteService = resolve('App\Services\FavoriteService');
+        $favoriteService->favorite($favoredUser, $author);
+
+        $this->actingAs($author)->postJson(route('posts.store'), [
+            'title' => 'My title',
+            'body' => 'My body.',
+        ]);
+
+        Notification::assertSentTo($favoredUser, NewPostNotification::class);
     }
 }
